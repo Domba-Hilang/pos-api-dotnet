@@ -1,0 +1,27 @@
+@base = http://localhost:5187
+
+### LOGIN
+# @name login
+POST {{base}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "cashier",
+  "password": "password"
+}
+
+### GET PRODUCTS (protected)
+GET {{base}}/api/products?page=1&pageSize=5
+Authorization: Bearer {{login.response.body.accessToken}}
+
+### CREATE PRODUCT (Admin only)
+POST {{base}}/api/products
+Authorization: Bearer {{login.response.body.accessToken}}
+Content-Type: application/json
+
+{
+  "name": "TEST REST CLIENT",
+  "category": "Minuman",
+  "price": 1234,
+  "stock": 5
+}

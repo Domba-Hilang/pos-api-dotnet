@@ -1,0 +1,625 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>POS Dashboard</title>
+
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+
+  <link href="styles.css" rel="stylesheet">
+</head>
+
+<body>
+  <!--Navbar-->
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark border-bottom border-dark-subtle">
+    <div class="container">
+      <a class="navbar-brand d-flex align-items-center gap-2" href="#">
+        <i class="bi bi-shop fs-4"></i>
+        <span class="fw-semibold">PoS</span>
+        <span class="badge text-bg-secondary ms-1">Web API</span>
+      </a>
+
+      <div class="ms-auto d-flex gap-2">
+        <button class="btn btn-outline-light btn-sm" id="btnRefresh">
+          <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+        </button>
+        <a class="btn btn-outline-light btn-sm" href="/swagger" target="_blank">
+          <i class="bi bi-braces me-1"></i>Swagger
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!--header-->
+  <header class="bg-body-tertiary border-bottom">
+    <div class="container py-4">
+      <div class="d-flex flex-wrap align-items-end justify-content-between gap-3">
+        <div>
+          <h1 class="h3 mb-1">Cashier Dashboard</h1>
+          <div class="text-secondary">Simple UI that will help you.</div>
+        </div>
+        <div class="d-flex gap-2">
+          <div class="stat-card">
+            <div class="stat-label"><i class="bi bi-box-seam me-1"></i>Products</div>
+            <div class="stat-value" id="statProducts">-</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label"><i class="bi bi-receipt me-1"></i>Revenue (Today)</div>
+            <div class="stat-value" id="statRevenue">-</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!--container-->
+  <main class="container my-4">
+    <!--auth bar-->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <div>
+        <span class="badge text-bg-secondary" id="authBadge">Not logged in</span>
+        <span class="text-secondary small ms-2" id="authInfo"></span>
+      </div>
+      <button class="btn btn-sm btn-outline-danger d-none" id="btnLogout" type="button">
+        <i class="bi bi-box-arrow-right me-1"></i>Logout
+      </button>
+    </div>
+    <!--login card-->
+    <div class="card mb-3" id="loginCard">
+      <div class="card-body">
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <i class="bi bi-shield-lock fs-4"></i>
+          <div>
+            <h5 class="mb-0">Login</h5>
+            <div class="text-secondary small">Use your cashier/admin account</div>
+          </div>
+        </div>
+
+        <div class="alert alert-danger d-none" id="loginError"></div>
+
+        <form id="loginForm" class="row g-2">
+          <div class="col-md-4">
+            <label class="form-label">Username</label>
+            <input id="loginUser" class="form-control" placeholder="admin / cashier" autocomplete="username" />
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Password</label>
+            <input id="loginPass" type="password" class="form-control" placeholder="password"
+              autocomplete="current-password" />
+          </div>
+          <div class="col-md-4 d-flex align-items-end">
+            <button class="btn btn-primary w-100" type="submit">
+              <i class="bi bi-box-arrow-in-right me-1"></i>Login
+            </button>
+          </div>
+        </form>
+
+        <div class="text-secondary small mt-2">
+          Demo accounts: <code>admin/password</code> (Admin), <code>cashier/password</code> (Cashier)
+        </div>
+      </div>
+    </div>
+
+    <!--pos app-->
+    <div id="posApp">
+      <div class="row g-4">
+
+        <!-- Left: Products -->
+        <div class="col-lg-7">
+          <div class="card shadow-sm">
+            <div class="card-header d-flex align-items-center justify-content-between">
+              <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-box-seam"></i>
+                <span class="fw-semibold">Products</span>
+              </div>
+              <span class="text-secondary small">Add products & check stock</span>
+            </div>
+
+            <div class="card-body">
+              <!-- Filters -->
+              <div id="productFilters" class="mb-1">
+
+                <!-- BARIS ATAS -->
+                <div class="row g-2 mb-0">
+                  <div class="col-md-5">
+                    <div class="input-group">
+                      <span class="input-group-text"><i class="bi bi-search"></i></span>
+                      <input class="form-control" id="fSearch" placeholder="Search product name..." />
+                    </div>
+                  </div>
+
+                  <div class="col-md-3">
+                    <select class="form-select " id="fCategory">
+                      <option value="all">All categories</option>
+                    </select>
+                  </div>
+
+                  <div class="col-md-3">
+                    <select class="form-select " id="fStatus">
+                      <option value="all" selected>All</option>
+                      <option value="active">Active only</option>
+                      <option value="inactive">Inactive only</option>
+                    </select>
+                  </div>
+                </div>
+
+                <!-- BARIS BAWAH -->
+                <div class="row g-2 mt-1">
+                  <div class="col-md-3">
+                    <div class="input-group ">
+                      <span class="input-group-text">
+                        <input class="form-check-input mt-0" type="checkbox" id="fLowStock" />
+                      </span>
+                      <span class="input-group-text">Low</span>
+                      <input class="form-control" id="fMinStock" type="number" min="1" value="5" />
+                    </div>
+                  </div>
+
+                  <div class="col-md-3">
+                    <select class="form-select" id="fSortBy">
+                      <option value="id">ID</option>
+                      <option value="name">Name</option>
+                      <option value="price">Price</option>
+                      <option value="stock">Stock</option>
+                    </select>
+                  </div>
+
+                  <div class="col-md-2">
+                    <select class="form-select" id="fOrder">
+                      <option value="asc">Asc</option>
+                      <option value="desc">Desc</option>
+                    </select>
+                  </div>
+
+                  <div class="col-md-1 d-grid">
+                    <button class="btn btn-outline-secondary btn-sm" id="btnApplyFilters" title="Apply filters">
+                      <i class="bi bi-funnel"></i>
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+              <div class="mt-2">
+                <form class="row g-2" id="formProduct">
+                  <div class="col-md-4">
+                    <div class="input-group">
+                      <span class="input-group-text"><i class="bi bi-tag"></i></span>
+                      <input class="form-control" id="pName" placeholder="Products name" required />
+                    </div>
+                  </div>
+                  <div class="col-md-3">
+                    <div class="input-group">
+                      <span class="input-group-text"><i class="bi bi-tag"></i></span>
+                      <input class="form-control" id="pCategory" placeholder="Category" required />
+                    </div>
+                  </div>
+                  <div class="col-md-2">
+                    <div class="input-group">
+                      <span class="input-group-text"><i class="bi bi-cash-coin"></i></span>
+                      <input class="form-control" id="pPrice" placeholder="Price" type="number" min="0" step="0.01"
+                        required />
+                    </div>
+                  </div>
+                  <div class="col-md-2">
+                    <div class="input-group">
+                      <span class="input-group-text"><i class="bi bi-box"></i></span>
+                      <input class="form-control" id="pStock" placeholder="Stock" type="number" min="0" step="1"
+                        required />
+                    </div>
+                  </div>
+                  <div class="col-md-1 d-grid">
+                    <button class="btn btn-primary btn-sm h-100 px-3" type="submit">
+                      <i class="bi bi-plus-lg"></i>Add
+                    </button>
+                  </div>
+                </form>
+
+                <div class="mt-3 table-responsive">
+                  <table class="table table-sm align-middle ">
+                    <thead class="table-light">
+                      <tr>
+                        <th style="width:60px;">ID</th>
+                        <th>Name</th>
+                        <th>Category</th>
+                        <th class="text-end" style="width:140px;">Price</th>
+                        <th class="text-end" style="width:90px;">Stock</th>
+                        <th style="width:120px;">Status</th>
+                        <th class="text-end" style="width:96px;">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="productsTbody">
+                      <tr>
+                        <td colspan="7" class="text-secondary">Loading...</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div class="d-flex align-items-center justify-content-between mt-2">
+                  <div class="text-secondary small" id="pgInfo">Page -</div>
+                  <div class="d-flex gap-2">
+                    <button class="btn btn-sm btn-outline-secondary" id="btnPrev" type="button">
+                      <i class="bi bi-chevron-left"></i> Prev
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary" id="btnNext" type="button">
+                      Next <i class="bi bi-chevron-right"></i>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="alert alert-danger d-none mt-2" id="productError"></div>
+              </div>
+            </div>
+          </div>
+          <!--daily report-->
+          <div class="card shadow-sm mt-4 mb-4">
+            <div class="card-header d-flex align-items-center gap-2">
+              <i class="bi bi-bar-chart"></i>
+              <span class="fw-semibold">Daily Report</span>
+            </div>
+
+            <div class="card-body">
+              <div class="row g-2">
+                <div class="col-8">
+                  <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-calendar3"></i></span>
+                    <input class="form-control" id="rDate" type="date" />
+                  </div>
+                </div>
+                <div class="col-4 d-grid">
+                  <button class="btn btn-outline-primary" id="btnReport" type="button">
+                    <i class="bi bi-search me-1"></i>Check
+                  </button>
+                </div>
+              </div>
+              <div class="mt-3">
+                <div class="text-secondary small mb-1">Report</div>
+                <pre class="codebox" id="report">{ }</pre>
+              </div>
+              <div class="alert alert-danger d-none mt-2" id="reportError"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Transaction-->
+        <div class="col-lg-5">
+
+          <div class="card shadow-sm mb-4">
+            <div class="card-header d-flex align-items-center gap-2">
+              <i class="bi bi-receipt"></i>
+              <span class="fw-semibold">Create Transaction</span>
+            </div>
+
+            <div class="card-body">
+              <!-- Add to cart -->
+              <form id="formTx" class="row g-2 align-items-end">
+                <div class="col-7">
+                  <label class="form-label small mb-1">Product</label>
+                  <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-bag"></i></span>
+                    <select class="form-select" id="txProduct" required>
+                      <option value="">Loading products...</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="col-3">
+                  <label class="form-label small mb-1">Qty</label>
+                  <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-123"></i></span>
+                    <input class="form-control" id="txQty" type="number" min="1" step="1" value="1" required />
+                  </div>
+                </div>
+
+                <div class="col-2 d-grid">
+                  <button class="btn btn-primary" id="btnAddToCart" type="button" title="Add to cart">
+                    <i class="bi bi-plus-lg"></i>
+                  </button>
+                </div>
+
+                <div class="col-12">
+                  <div class="alert alert-danger d-none mb-0" id="txError"></div>
+                </div>
+              </form>
+
+              <hr class="my-3" />
+
+              <!-- Cart table -->
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <div class="fw-semibold">Cart</div>
+                <button class="btn btn-sm btn-outline-secondary" id="btnClearCart" type="button">Clear</button>
+              </div>
+
+              <div class="table-responsive">
+                <table class="table table-sm align-middle mb-2">
+                  <thead class="table-light">
+                    <tr>
+                      <th>Item</th>
+                      <th class="text-end" style="width:70px;">Qty</th>
+                      <th class="text-end" style="width:110px;">Subtotal</th>
+                      <th class="text-end" style="width:50px;"></th>
+                    </tr>
+                  </thead>
+                  <tbody id="cartTbody">
+                    <tr>
+                      <td colspan="4" class="text-secondary">Cart is empty.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <!--CART TABLE-->
+              <div class="d-flex justify-content-between align-items-center">
+                <div class="text-secondary small" id="cartCount">0 items</div>
+                <div class="fw-bold" id="cartTotal">Rp 0</div>
+              </div>
+
+              <!-- PAYMENT -->
+              <div class="card mt-3 border">
+                <div class="card-body p-3">
+                  <h6 class="mb-2">Payment</h6>
+
+                  <div class="row g-2">
+                    <div class="col-4">
+                      <label class="form-label small">Method</label>
+                      <select id="payMethod" class="form-select">
+                        <option value="Cash">Cash</option>
+                        <option value="QRIS">QRIS</option>
+                        <option value="EWallet">E-Wallet</option>
+                        <option value="BankTransfer">Bank Transfer</option>
+                      </select>
+                    </div>
+
+                    <div class="col-4" id="cashBox">
+                      <label class="form-label small">Cash received</label>
+                      <input id="cashReceived" type="number" class="form-control" min="0" step="1000"
+                        placeholder="e.g. 50000" />
+                    </div>
+
+                    <div class="col-4">
+                      <label class="form-label small">Reference</label>
+                      <input id="payRef" class="form-control" placeholder="TXID / note (dummy)" />
+                    </div>
+                  </div>
+
+                  <div class="d-flex justify-content-between align-items-center mt-2">
+                    <span class="text-secondary small">Change</span>
+                    <strong id="changePreview">Rp 0</strong>
+                  </div>
+                </div>
+              </div>
+
+              <button class="btn btn-success w-100 mt-2" id="btnCheckout" type="button" disabled>
+                <i class="bi bi-check2-circle me-1"></i>Checkout
+              </button>
+
+              <div class="mt-3">
+                <div class="text-secondary small mb-1">Result</div>
+                <pre class="codebox" id="txResult">{ }</pre>
+              </div>
+            </div>
+          </div>
+
+          <div class="card shadow-sm">
+            <div class="card-header d-flex align-items-center gap-2">
+              <i class="bi bi-clock-history"></i>
+              <span class="fw-semibold">Transaction History</span>
+            </div>
+            <!--historyTable-->
+            <div class="card-body">
+
+              <div class="row g-2 mb-2">
+                <div class="col-7">
+                  <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-calendar3"></i></span>
+                    <input class="form-control" id="txDate" type="date" />
+                  </div>
+                </div>
+                <div class="col-5 d-grid">
+                  <button class="btn btn-outline-primary" id="btnTxFilter" type="button">
+                    <i class="bi bi-search me-1"></i>Load
+                  </button>
+                </div>
+              </div>
+
+              <div class="table-responsive">
+                <table class="table table-sm align-middle">
+                  <thead class="table-light">
+                    <tr>
+                      <th style="width:70px;">ID</th>
+                      <th>Time</th>
+                      <th class="text-end" style="width:120px;">Total</th>
+                      <th style="width:90px;">Method</th>
+                      <th style="width:120px;">By</th>
+                      <th class="text-end" style="width:60px;"></th>
+                    </tr>
+                  </thead>
+                  <tbody id="txHistTbody">
+                    <tr>
+                      <td colspan="6" class="text-secondary">No data.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="d-flex align-items-center justify-content-between mt-2">
+                <div class="text-secondary small" id="txHistInfo">-</div>
+                <div class="d-flex gap-2">
+                  <button class="btn btn-sm btn-outline-secondary" id="btnTxPrev" type="button">
+                    <i class="bi bi-chevron-left"></i>
+                  </button>
+                  <button class="btn btn-sm btn-outline-secondary" id="btnTxNext" type="button">
+                    <i class="bi bi-chevron-right"></i>
+                  </button>
+                </div>
+              </div>
+
+              <div class="alert alert-danger d-none mt-2" id="txHistError"></div>
+
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <footer class="py-4 text-center text-secondary small">
+      <span>Built by Jaya • ASP.NET Core Web API + PostgreSQL (Docker)</span>
+    </footer>
+  </main>
+
+  <!-- Edit Product Modal -->
+  <div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <form class="modal-content" id="editForm">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i>Edit Product</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+
+        <div class="modal-body">
+          <input type="hidden" id="editId" />
+
+          <div class="mb-3">
+            <label class="form-label">Name</label>
+            <input class="form-control" id="editName" required />
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Category</label>
+            <input class="form-control" id="editCategory" required />
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Price</label>
+            <input class="form-control" id="editPrice" type="number" min="0" step="0.01" required />
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Stock</label>
+            <input class="form-control" id="editStock" type="number" min="0" step="1" required />
+          </div>
+
+          <div class="alert alert-danger d-none" id="editError"></div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-check2 me-1"></i>Save
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Receipt / Transaction Detail Modal -->
+  <div class="modal fade" id="txModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div>
+            <h5 class="modal-title mb-0">Receipt</h5>
+            <div class="text-secondary small" id="txModalSub">-</div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+
+        <div class="modal-body">
+          <div id="txReceipt">
+            <div class="d-flex justify-content-between align-items-start">
+              <div>
+                <div class="fw-bold">POS Demo Store</div>
+                <div class="text-secondary small">Jakarta • Thank you!</div>
+              </div>
+              <div class="text-end small">
+                <div><span class="text-secondary">Tx ID:</span> <span id="rxId">-</span></div>
+                <div><span class="text-secondary">Time:</span> <span id="rxTime">-</span></div>
+                <div><span class="text-secondary">By:</span> <span id="rxBy">-</span></div>
+              </div>
+            </div>
+
+            <hr>
+
+            <div class="row g-2 small">
+              <div class="col-6"><span class="text-secondary">Payment:</span> <span id="rxMethod">-</span></div>
+              <div class="col-6 text-end"><span class="text-secondary">Ref:</span> <span id="rxRef">-</span></div>
+            </div>
+
+            <div class="table-responsive mt-2">
+              <table class="table table-sm align-middle">
+                <thead class="table-light">
+                  <tr>
+                    <th>Item</th>
+                    <th class="text-end" style="width:70px;">Qty</th>
+                    <th class="text-end" style="width:140px;">Price</th>
+                    <th class="text-end" style="width:140px;">Subtotal</th>
+                  </tr>
+                </thead>
+                <tbody id="rxItemsTbody">
+                  <tr>
+                    <td colspan="4" class="text-secondary">Loading...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="d-flex justify-content-end">
+              <div style="min-width: 320px;">
+                <div class="d-flex justify-content-between">
+                  <div class="text-secondary">Total</div>
+                  <div class="fw-semibold" id="rxTotal">-</div>
+                </div>
+                <div class="d-flex justify-content-between">
+                  <div class="text-secondary">Paid</div>
+                  <div id="rxPaid">-</div>
+                </div>
+                <div class="d-flex justify-content-between">
+                  <div class="text-secondary">Change</div>
+                  <div id="rxChange">-</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="text-center text-secondary small mt-3">
+              Powered by POS API • JWT Auth • PostgreSQL
+            </div>
+          </div>
+
+          <div class="alert alert-danger d-none mt-2" id="txModalError"></div>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn btn-outline-secondary" data-bs-dismiss="modal" type="button">Close</button>
+          <button class="btn btn-primary" id="btnPrintReceipt" type="button">
+            <i class="bi bi-printer me-1"></i>Print
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast (boleh taruh sebelum script) -->
+  <div class="position-fixed top-0 end-0 p-3" style="z-index: 1080">
+    <div id="liveToast" class="toast align-items-center text-bg-dark border-0" role="alert" aria-live="assertive"
+      aria-atomic="true">
+      <div class="d-flex">
+        <div class="toast-body" id="toastBody">Done.</div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"
+          aria-label="Close"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCRIPTS (HANYA SEKALI) -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="app.js?v=2"></script>
+
+</body>
+
+</html>
