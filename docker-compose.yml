@@ -1,0 +1,37 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16
+    container_name: pos_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: posdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pos_api
+    depends_on:
+      - db
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Default: >
+        Host=db;Port=5432;Database=posdb;Username=postgres;Password=password
+      Jwt__Key: THIS_IS_SUPER_SECRET_JWT_KEY_32_CHARS_MIN
+      Jwt__Issuer: PosApi
+      Jwt__Audience: PosWeb
+      Jwt__ExpiresMinutes: 120
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+volumes:
+  pgdata:
