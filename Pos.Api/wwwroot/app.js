@@ -1,17 +1,13 @@
 const el = (id) => document.getElementById(id);
 let cart = [];
 let currentPage = 1;
-
 let currentRole = "Cashier";
 let currentUser = "Jaya";
-
 let currentReceiptTx = null;
-
 let txPage = 1;
+let txDateFilter= "";
 const txPageSize = 1; // history 1 item/page
-
 const pageSize = 5;   // products 5 item/page
-
 const CART_KEY = "pos_cart_v1";
 
 
@@ -33,6 +29,15 @@ function getAuth() {
     username: localStorage.getItem("pos_user"),
     role: localStorage.getItem("pos_role"),
   };
+}
+function isTokenExpired(token) {
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    const now = Math.floor(Date.now() / 1000);
+    return payload.exp && payload.exp < now;
+  } catch {
+    return true; // token rusak → anggap expired
+  }
 }
 
 function showLoginError(msg) {
@@ -168,7 +173,11 @@ async function apiJson(url, options = {}) {
       else if (j?.title) msg = j.title;
     } catch { }
 
-    if (res.status === 401) msg = "Unauthorized. Please login.";
+    if (res.status === 401) {
+      clearToken();
+      applyAuthUI();
+      msg = "Session expired. Please login again.";
+    }
     if (res.status === 403) msg = "Forbidden (Admin only). Please login as Admin.";
 
     const err = new Error(msg);
@@ -743,6 +752,9 @@ async function loadTxHistory() {
   params.set("page", String(txPage));
   params.set("pageSize", String(txPageSize));
 
+  const date = el("txDate")?.value;
+  if (date) params.set("date", date);
+
   tbody.innerHTML = `<tr>
     <td colspan="6" class="text-secondary">Loading...</td>
   </tr>`;
@@ -898,6 +910,10 @@ function printReceipt() {
   w.document.close();
 }
 
+const token = getToken();
+if (token && isTokenExpired(token)) {
+  clearToken();
+}
 /* ---------- init ---------- */
 window.addEventListener("load", async () => {
   el("loginForm")?.addEventListener("submit", doLogin);
@@ -926,7 +942,6 @@ window.addEventListener("load", async () => {
     await loadDailyReport(el("rDate").value);
   });
 
-  // History bindings
   el("btnTxFilter")?.addEventListener("click", async () => {
     txPage = 1;
     await loadTxHistory();

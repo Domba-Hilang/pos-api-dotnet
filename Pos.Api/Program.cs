@@ -15,12 +15,6 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
 
-builder.Services.AddAuthorization(options =>
-{
-    options.AddPolicy("AdminOnly", p => p.RequireRole("Admin"));
-    options.AddPolicy("CashierOrAdmin", p => p.RequireRole("Admin", "Cashier"));
-});
-
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {

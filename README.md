@@ -21,3 +21,10 @@ Simple Point of Sale (POS) system built with ASP.NET Core Web API and PostgreSQL
 ```bash
 dotnet restore
 dotnet run
+
+## How to Run (Docker)
+
+docker compose up --build
+
+API: http://localhost:8080
+Swagger: http://localhost:8080/swagger

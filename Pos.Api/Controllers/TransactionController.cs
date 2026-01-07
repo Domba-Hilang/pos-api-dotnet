@@ -213,35 +213,51 @@ public class TransactionsController : ControllerBase
     }
 
     [Authorize(Policy = "CashierOrAdmin")]
-    [HttpGet("history")]
-    public async Task<IActionResult> History([FromQuery] int page = 1, [FromQuery] int pageSize = 1)
+[HttpGet("history")]
+public async Task<IActionResult> History(
+    [FromQuery] int page = 1,
+    [FromQuery] int pageSize = 10,
+    [FromQuery] DateOnly? date = null)
+{
+    page = page < 1 ? 1 : page;
+    pageSize = pageSize < 1 ? 10 : pageSize;
+    pageSize = pageSize > 100 ? 100 : pageSize;
+
+    var q = _db.Transactions.AsNoTracking();
+
+    if (date.HasValue)
     {
-        page = page < 1 ? 1 : page;
-        pageSize = pageSize < 1 ? 10 : pageSize;
-        pageSize = pageSize > 100 ? 100 : pageSize;
+        var wib = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
 
-        var q = _db.Transactions.AsNoTracking();
+        var startWib = date.Value.ToDateTime(TimeOnly.MinValue);
+        var endWib = startWib.AddDays(1);
 
-        var total = await q.CountAsync();
-        var totalPages = (int)Math.Ceiling(total / (double)pageSize);
+        var startUtc = TimeZoneInfo.ConvertTimeToUtc(startWib, wib);
+        var endUtc = TimeZoneInfo.ConvertTimeToUtc(endWib, wib);
 
-        var items = await q
-            .OrderByDescending(t => t.CreatedAt)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .Select(t => new
-            {
-                t.Id,
-                t.CreatedAt,
-                t.TotalPrice,
-                t.PaymentMethod,
-                t.ChangeAmount,
-                t.CreatedByUser,
-                t.CreatedByRole
-            })
-            .ToListAsync();
-
-        return Ok(new { page, pageSize, total, totalPages, items });
+        q = q.Where(t => t.CreatedAt >= startUtc && t.CreatedAt < endUtc);
     }
+
+    var total = await q.CountAsync();
+    var totalPages = (int)Math.Ceiling(total / (double)pageSize);
+
+    var items = await q
+        .OrderByDescending(t => t.CreatedAt)
+        .Skip((page - 1) * pageSize)
+        .Take(pageSize)
+        .Select(t => new
+        {
+            t.Id,
+            t.CreatedAt,
+            t.TotalPrice,
+            t.PaymentMethod,
+            t.ChangeAmount,
+            t.CreatedByUser,
+            t.CreatedByRole
+        })
+        .ToListAsync();
+
+    return Ok(new { page, pageSize, total, totalPages, items });
+}
 
 }
