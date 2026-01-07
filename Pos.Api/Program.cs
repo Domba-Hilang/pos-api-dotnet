@@ -11,9 +11,16 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+var cs = builder.Configuration.GetConnectionString("Default");
+Console.WriteLine($"[DB CONNECTION] = {cs ?? "NULL"}");
+
+if (string.IsNullOrWhiteSpace(cs))
+{
+    throw new Exception("Connection string Default is NULL or EMPTY");
+}
 
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
+    options.UseNpgsql(cs));
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -45,13 +52,11 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    db.Database.Migrate();
-}
-
-app.UseHttpsRedirection();
+//using (var scope = app.Services.CreateScope())
+//{
+//    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+//   db.Database.Migrate();
+//}
 
 app.UseDefaultFiles();
 app.UseStaticFiles();
